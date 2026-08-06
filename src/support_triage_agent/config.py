@@ -24,3 +24,17 @@ def get_gemini_api_key() -> str:
         raise RuntimeError("GEMINI_API_KEY is missing. Add it to your .env file.")
 
     return api_key
+
+
+def is_database_enabled() -> bool:
+    value = os.getenv("DATABASE_ENABLED", "false")
+    return value.lower().strip() == "true"
+
+
+def get_database_url() -> str:
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is missing. Add it to the environment.")
+
+    return database_url

@@ -142,3 +142,69 @@ jobs:
       - name: Remove test container
         if: always()
         run: docker rm --force support-triage-api  
+
+
+# docker compose integration tests
+  compose-integration:
+    name: PostgreSQL integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      PYTHON_VERSION: "3.13"
+      POSTGRES_DB: support_triage
+      POSTGRES_USER: support_user
+      POSTGRES_PASSWORD: ci_test_password
+      DATABASE_ENABLED: "true"
+      LLM_ENABLED: "false"
+      GEMINI_MODEL: gemini-3.6-flash
+      GEMINI_API_KEY: ""
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Start Compose services
+        run: docker compose up --build --detach
+
+      - name: Wait for API readiness
+        shell: bash
+        run: |
+          for attempt in {1..20}; do
+            if curl --fail --silent \
+              http://127.0.0.1:8000/ready; then
+              exit 0
+            fi
+
+            sleep 3
+          done
+
+          docker compose logs
+          exit 1
+
+      - name: Store a ticket
+        shell: bash
+        run: |
+          curl --fail \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data '{"ticket_text":"I was charged twice and need help immediately."}' \
+            http://127.0.0.1:8000/tickets
+
+      - name: Retrieve stored tickets
+        run: >
+          curl
+          --fail
+          http://127.0.0.1:8000/tickets
+
+      - name: Show service state
+        if: always()
+        run: docker compose ps
+
+      - name: Show service logs
+        if: always()
+        run: docker compose logs
+
+      - name: Remove integration environment
+        if: always()
+        run: docker compose down --volumes
