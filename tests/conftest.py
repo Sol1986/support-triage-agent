@@ -21,5 +21,6 @@ def base_state() -> TicketState:
 
 
 @pytest.fixture(autouse=True)
-def disable_real_llm_during_tests(monkeypatch):
+def disable_external_services(monkeypatch):
     monkeypatch.setenv("LLM_ENABLED", "false")
+    monkeypatch.setenv("DATABASE_ENABLED", "false")

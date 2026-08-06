@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -34,3 +36,15 @@ class TicketResponse(BaseModel):
     requires_human_review: bool
     llm_enabled: bool
     model_used: str
+
+
+class StoredTicketResponse(TicketResponse):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+class ReadinessResponse(BaseModel):
+    status: str
+    database: str
