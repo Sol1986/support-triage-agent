@@ -50,15 +50,11 @@ def test_classify_ticket(
 def test_validate_ticket_removes_whitespace(
     base_state: TicketState,
 ) -> None:
-    base_state["ticket_text"] = (
-        "   I need assistance with my account.   "
-    )
+    base_state["ticket_text"] = "   I need assistance with my account.   "
 
     result = validate_ticket(base_state)
 
-    assert result["ticket_text"] == (
-        "I need assistance with my account."
-    )
+    assert result["ticket_text"] == ("I need assistance with my account.")
 
 
 @pytest.mark.parametrize(
@@ -82,9 +78,7 @@ def test_validate_ticket_rejects_invalid_input(
 def test_assigns_high_priority(
     base_state: TicketState,
 ) -> None:
-    base_state["ticket_text"] = (
-        "I was charged twice and need help immediately."
-    )
+    base_state["ticket_text"] = "I was charged twice and need help immediately."
     base_state["category"] = "billing"
 
     result = assign_priority(base_state)
@@ -96,9 +90,7 @@ def test_assigns_high_priority(
 def test_billing_requires_human_review(
     base_state: TicketState,
 ) -> None:
-    base_state["ticket_text"] = (
-        "I have a question about an invoice."
-    )
+    base_state["ticket_text"] = "I have a question about an invoice."
     base_state["category"] = "billing"
 
     result = assign_priority(base_state)
@@ -111,9 +103,7 @@ def test_first_draft_fails_evaluation(
     base_state: TicketState,
 ) -> None:
     base_state["category"] = "billing"
-    base_state["draft_response"] = (
-        "We received your billing support request."
-    )
+    base_state["draft_response"] = "We received your billing support request."
 
     result = evaluate_response(base_state)
 

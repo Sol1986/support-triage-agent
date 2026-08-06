@@ -10,12 +10,7 @@ class TicketRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {
-                    "ticket_text": (
-                        "I was charged twice and need a refund "
-                        "immediately."
-                    )
-                }
+                {"ticket_text": ("I was charged twice and need a refund immediately.")}
             ]
         }
     )

@@ -1,10 +1,7 @@
 from support_triage_agent.graph import support_graph
 
-
 initial_state = {
-    "ticket_text": (
-        "I was charged twice and need a refund immediately."
-    ),
+    "ticket_text": ("I was charged twice and need a refund immediately."),
     "category": "",
     "priority": "",
     "summary": "",

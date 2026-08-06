@@ -19,6 +19,7 @@ def base_state() -> TicketState:
         "model_used": "deterministic-rules",
     }
 
+
 @pytest.fixture(autouse=True)
 def disable_real_llm_during_tests(monkeypatch):
     monkeypatch.setenv("LLM_ENABLED", "false")

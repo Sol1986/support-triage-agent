@@ -1,6 +1,5 @@
-from support_triage_agent.state import TicketState
 from support_triage_agent.llm import get_llm_service
-
+from support_triage_agent.state import TicketState
 
 CATEGORY_KEYWORDS = {
     "billing": [
@@ -61,9 +60,7 @@ def validate_ticket(state: TicketState) -> dict:
         raise ValueError("Ticket text cannot be empty.")
 
     if len(cleaned_ticket) < 10:
-        raise ValueError(
-            "Ticket must contain at least 10 characters."
-        )
+        raise ValueError("Ticket must contain at least 10 characters.")
 
     return {"ticket_text": cleaned_ticket}
 
@@ -71,9 +68,7 @@ def validate_ticket(state: TicketState) -> dict:
 def classify_ticket(state: TicketState) -> dict:
     if state["llm_enabled"]:
         service = get_llm_service()
-        result = service.classify_ticket(
-            state["ticket_text"]
-        )
+        result = service.classify_ticket(state["ticket_text"])
 
         return {"category": result.category}
 
@@ -89,15 +84,9 @@ def classify_ticket(state: TicketState) -> dict:
 def assign_priority(state: TicketState) -> dict:
     ticket_lower = state["ticket_text"].lower()
 
-    if any(
-        keyword in ticket_lower
-        for keyword in HIGH_PRIORITY_KEYWORDS
-    ):
+    if any(keyword in ticket_lower for keyword in HIGH_PRIORITY_KEYWORDS):
         priority = "high"
-    elif any(
-        keyword in ticket_lower
-        for keyword in MEDIUM_PRIORITY_KEYWORDS
-    ):
+    elif any(keyword in ticket_lower for keyword in MEDIUM_PRIORITY_KEYWORDS):
         priority = "medium"
     else:
         priority = "low"
@@ -109,9 +98,7 @@ def assign_priority(state: TicketState) -> dict:
 
 
 def create_summary(state: TicketState) -> dict:
-    summary = (
-        f"Customer submitted a {state['category']} support request."
-    )
+    summary = f"Customer submitted a {state['category']} support request."
 
     return {"summary": summary}
 
@@ -173,9 +160,7 @@ def evaluate_response(state: TicketState) -> dict:
 
     if missing_elements:
         feedback = (
-            "Response needs improvement. Missing: "
-            + ", ".join(missing_elements)
-            + "."
+            "Response needs improvement. Missing: " + ", ".join(missing_elements) + "."
         )
     else:
         feedback = "Response meets all required quality checks."

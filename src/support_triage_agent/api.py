@@ -7,7 +7,6 @@ from support_triage_agent.models import (
 )
 from support_triage_agent.pipeline import process_ticket
 
-
 app = FastAPI(
     title="Support Ticket Triage API",
     description=(
@@ -18,7 +17,7 @@ app = FastAPI(
 )
 
 
-@app.get("/",tags=["System"])
+@app.get("/", tags=["System"])
 def read_root() -> dict[str, str]:
     return {
         "service": "Support Ticket Triage API",
@@ -38,6 +37,7 @@ def health_check() -> HealthResponse:
         status="healthy",
         service="support-ticket-triage",
     )
+
 
 @app.get(
     "/categories",
