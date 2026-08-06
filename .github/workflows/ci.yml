@@ -89,3 +89,56 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
           retention-days: 7
+
+  container:
+    name: Container build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: support-triage-agent:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: >
+          docker run
+          --detach
+          --name support-triage-api
+          --publish 8000:8000
+          --env LLM_ENABLED=false
+          support-triage-agent:ci
+
+      - name: Run container smoke test
+        shell: bash
+        run: |
+          for attempt in {1..15}; do
+            if curl --fail --silent http://127.0.0.1:8000/health; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs support-triage-api
+          exit 1
+
+      - name: Show container logs
+        if: always()
+        run: docker logs support-triage-api
+
+      - name: Remove test container
+        if: always()
+        run: docker rm --force support-triage-api  
