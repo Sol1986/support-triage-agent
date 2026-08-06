@@ -1,20 +1,20 @@
-from support_triage_agent.nodes import (
-    assign_priority,
-    classify_ticket,
-    create_summary,
-    draft_response,
-    validate_ticket,
-)
+from support_triage_agent.graph import support_graph
 from support_triage_agent.state import TicketState
 
 
 def process_ticket(ticket_text: str) -> TicketState:
-    state = TicketState(ticket_text=ticket_text)
+    initial_state = {
+        "ticket_text": ticket_text,
+        "category": "",
+        "priority": "",
+        "summary": "",
+        "draft_response": "",
+        "evaluation_score": 0,
+        "evaluation_feedback": "",
+        "revision_count": 0,
+        "requires_human_review": False,
+    }
 
-    state = validate_ticket(state)
-    state = classify_ticket(state)
-    state = assign_priority(state)
-    state = create_summary(state)
-    state = draft_response(state)
+    final_state = support_graph.invoke(initial_state)
 
-    return state
+    return final_state

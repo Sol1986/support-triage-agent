@@ -1,26 +1,29 @@
 import json
 
-from support_triage_agent.nodes import (
-    assign_priority,
-    classify_ticket,
-    create_summary,
-    draft_response,
-    validate_ticket,
-)
-from support_triage_agent.state import TicketState
+from support_triage_agent.pipeline import process_ticket
 
 
-def process_ticket(ticket_text: str) -> TicketState:
-    state = TicketState(ticket_text=ticket_text)
+def main() -> None:
+    print("LangGraph Support Ticket Triage")
+    print("Type 'exit' to stop.\n")
 
-    state = validate_ticket(state)
-    state = classify_ticket(state)
-    state = assign_priority(state)
-    state = create_summary(state)
-    state = draft_response(state)
+    while True:
+        ticket_text = input("Enter support ticket: ")
 
-    return state
+        if ticket_text.lower().strip() == "exit":
+            print("Application stopped.")
+            break
+
+        try:
+            result = process_ticket(ticket_text)
+
+            print("\nFinal graph state:")
+            print(json.dumps(result, indent=2))
+            print()
+
+        except ValueError as error:
+            print(f"\nValidation error: {error}\n")
+
 
 if __name__ == "__main__":
-    result = process_ticket("My package did not arrive and I have a delivery problem.")
-    print(json.dumps(result.to_dict(), indent=2))
+    main()

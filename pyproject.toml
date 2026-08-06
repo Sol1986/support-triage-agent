@@ -7,7 +7,9 @@ authors = [
     { name = "“Sol1986”", email = "“sol.farahmand1986@gmail.com”" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "langgraph>=1.2.10",
+]
 
 [project.scripts]
 support-triage-agent = "support_triage_agent:main"

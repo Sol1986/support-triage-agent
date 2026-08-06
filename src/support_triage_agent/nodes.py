@@ -28,12 +28,12 @@ CATEGORY_KEYWORDS = {
         "email address",
     ],
     "shipping": [
-            "delivery",
-            "shipment",
-            "shipping",
-            "package",
-            "arrive",
-        ],
+        "delivery",
+        "shipment",
+        "shipping",
+        "package",
+        "arrive",
+    ],
 }
 
 HIGH_PRIORITY_KEYWORDS = [
@@ -53,8 +53,8 @@ MEDIUM_PRIORITY_KEYWORDS = [
 ]
 
 
-def validate_ticket(state: TicketState) -> TicketState:
-    cleaned_ticket = state.ticket_text.strip()
+def validate_ticket(state: TicketState) -> dict:
+    cleaned_ticket = state["ticket_text"].strip()
 
     if not cleaned_ticket:
         raise ValueError("Ticket text cannot be empty.")
@@ -64,66 +64,118 @@ def validate_ticket(state: TicketState) -> TicketState:
             "Ticket must contain at least 10 characters."
         )
 
-    state.ticket_text = cleaned_ticket
-    return state
+    return {"ticket_text": cleaned_ticket}
 
 
-def classify_ticket(state: TicketState) -> TicketState:
-    ticket_lower = state.ticket_text.lower()
+def classify_ticket(state: TicketState) -> dict:
+    ticket_lower = state["ticket_text"].lower()
 
     for category, keywords in CATEGORY_KEYWORDS.items():
         if any(keyword in ticket_lower for keyword in keywords):
-            state.category = category
-            return state
+            return {"category": category}
 
-    state.category = "general"
-    return state
+    return {"category": "general"}
 
 
-def assign_priority(state: TicketState) -> TicketState:
-    ticket_lower = state.ticket_text.lower()
+def assign_priority(state: TicketState) -> dict:
+    ticket_lower = state["ticket_text"].lower()
 
     if any(
         keyword in ticket_lower
         for keyword in HIGH_PRIORITY_KEYWORDS
     ):
-        state.priority = "high"
+        priority = "high"
     elif any(
         keyword in ticket_lower
         for keyword in MEDIUM_PRIORITY_KEYWORDS
     ):
-        state.priority = "medium"
+        priority = "medium"
     else:
-        state.priority = "low"
+        priority = "low"
 
-    state.requires_human_review = state.priority == "high"
-    return state
+    return {
+        "priority": priority,
+        "requires_human_review": True,
+    }
 
 
-def create_summary(state: TicketState) -> TicketState:
-    state.summary = (
-        f"Customer submitted a {state.category} support request."
+def create_summary(state: TicketState) -> dict:
+    summary = (
+        f"Customer submitted a {state['category']} support request."
     )
-    return state
+
+    return {"summary": summary}
 
 
-def draft_response(state: TicketState) -> TicketState:
+def draft_response(state: TicketState) -> dict:
+    category = state["category"]
+    priority = state["priority"]
+
     response_templates = {
         "high": (
-            f"Your {state.category} issue has been marked as high "
-            "priority. A support specialist will review it as soon "
-            "as possible."
+            f"We received your {category} support request and marked "
+            "it as high priority. A support specialist will review "
+            "the issue."
         ),
         "medium": (
-            f"We received your {state.category} support request. "
-            "Our team will review the issue and follow up shortly."
+            f"We received your {category} support request. "
+            "Our support team will review the issue."
         ),
         "low": (
-            f"We received your {state.category} support request. "
-            "Our team will review it and provide the appropriate "
-            "next steps."
+            f"We received your {category} support request. "
+            "Our team will review it."
         ),
     }
 
-    state.draft_response = response_templates[state.priority]
-    return state
+    return {
+        "draft_response": response_templates[priority],
+        "revision_count": 0,
+    }
+
+
+def evaluate_response(state: TicketState) -> dict:
+    response = state["draft_response"].lower()
+
+    required_elements = {
+        "acknowledges_category": state["category"] in response,
+        "explains_next_step": "next step" in response,
+        "provides_reference": "reference number" in response,
+    }
+
+    passed_checks = sum(required_elements.values())
+    score = 4 + (passed_checks * 2)
+
+    missing_elements = [
+        name.replace("_", " ")
+        for name, passed in required_elements.items()
+        if not passed
+    ]
+
+    if missing_elements:
+        feedback = (
+            "Response needs improvement. Missing: "
+            + ", ".join(missing_elements)
+            + "."
+        )
+    else:
+        feedback = "Response meets all required quality checks."
+
+    return {
+        "evaluation_score": score,
+        "evaluation_feedback": feedback,
+    }
+
+
+def revise_response(state: TicketState) -> dict:
+    revised_response = (
+        f"We received your {state['category']} support request and "
+        f"assigned it {state['priority']} priority. As a next step, "
+        "a support specialist will review the details and contact "
+        "you. Please keep your reference number available for "
+        "future communication."
+    )
+
+    return {
+        "draft_response": revised_response,
+        "revision_count": state["revision_count"] + 1,
+    }

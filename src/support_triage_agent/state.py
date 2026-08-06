@@ -1,17 +1,13 @@
-from dataclasses import asdict, dataclass
+from typing import TypedDict
 
-# This class represents the state of a support ticket, including its text, category, priority, summary, draft response, and whether it requires human review. It provides a method to convert the state to a dictionary format for easy serialization or further processing.
-@dataclass
-class TicketState:
-    '''
-    TicketState represents everything the workflow currently knows about a ticket.
-    '''
+
+class TicketState(TypedDict):
     ticket_text: str
-    category: str = ""
-    priority: str = ""
-    summary: str = ""
-    draft_response: str = ""
-    requires_human_review: bool = False
-
-    def to_dict(self) -> dict:
-        return asdict(self)
+    category: str
+    priority: str
+    summary: str
+    draft_response: str
+    evaluation_score: int
+    evaluation_feedback: str
+    revision_count: int
+    requires_human_review: bool
