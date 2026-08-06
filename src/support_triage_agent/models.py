@@ -37,3 +37,5 @@ class TicketResponse(BaseModel):
     evaluation_feedback: str
     revision_count: int
     requires_human_review: bool
+    llm_enabled: bool
+    model_used: str

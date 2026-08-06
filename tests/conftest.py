@@ -15,4 +15,10 @@ def base_state() -> TicketState:
         "evaluation_feedback": "",
         "revision_count": 0,
         "requires_human_review": False,
+        "llm_enabled": False,
+        "model_used": "deterministic-rules",
     }
+
+@pytest.fixture(autouse=True)
+def disable_real_llm_during_tests(monkeypatch):
+    monkeypatch.setenv("LLM_ENABLED", "false")

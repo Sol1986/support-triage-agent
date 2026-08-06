@@ -1,4 +1,5 @@
 from support_triage_agent.state import TicketState
+from support_triage_agent.llm import get_llm_service
 
 
 CATEGORY_KEYWORDS = {
@@ -68,6 +69,14 @@ def validate_ticket(state: TicketState) -> dict:
 
 
 def classify_ticket(state: TicketState) -> dict:
+    if state["llm_enabled"]:
+        service = get_llm_service()
+        result = service.classify_ticket(
+            state["ticket_text"]
+        )
+
+        return {"category": result.category}
+
     ticket_lower = state["ticket_text"].lower()
 
     for category, keywords in CATEGORY_KEYWORDS.items():
@@ -108,27 +117,38 @@ def create_summary(state: TicketState) -> dict:
 
 
 def draft_response(state: TicketState) -> dict:
-    category = state["category"]
-    priority = state["priority"]
+    if state["llm_enabled"]:
+        service = get_llm_service()
+
+        result = service.draft_response(
+            ticket_text=state["ticket_text"],
+            category=state["category"],
+            priority=state["priority"],
+        )
+
+        return {
+            "draft_response": result.response,
+            "revision_count": 0,
+        }
 
     response_templates = {
         "high": (
-            f"We received your {category} support request and marked "
-            "it as high priority. A support specialist will review "
-            "the issue."
+            f"We received your {state['category']} support request "
+            "and marked it as high priority. A support specialist "
+            "will review the issue."
         ),
         "medium": (
-            f"We received your {category} support request. "
+            f"We received your {state['category']} support request. "
             "Our support team will review the issue."
         ),
         "low": (
-            f"We received your {category} support request. "
+            f"We received your {state['category']} support request. "
             "Our team will review it."
         ),
     }
 
     return {
-        "draft_response": response_templates[priority],
+        "draft_response": response_templates[state["priority"]],
         "revision_count": 0,
     }
 
@@ -167,6 +187,22 @@ def evaluate_response(state: TicketState) -> dict:
 
 
 def revise_response(state: TicketState) -> dict:
+    if state["llm_enabled"]:
+        service = get_llm_service()
+
+        result = service.revise_response(
+            ticket_text=state["ticket_text"],
+            category=state["category"],
+            priority=state["priority"],
+            current_response=state["draft_response"],
+            feedback=state["evaluation_feedback"],
+        )
+
+        return {
+            "draft_response": result.response,
+            "revision_count": state["revision_count"] + 1,
+        }
+
     revised_response = (
         f"We received your {state['category']} support request and "
         f"assigned it {state['priority']} priority. As a next step, "
