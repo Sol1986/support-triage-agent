@@ -1,0 +1,1 @@
+[![CI](https://github.com/sol-ai-architecture-lab/support-triage-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/sol1986/support-triage-agent/actions/workflows/ci.yml)
