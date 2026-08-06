@@ -93,9 +93,7 @@ def test_llm_revision(base_state, monkeypatch):
     base_state["category"] = "billing"
     base_state["priority"] = "high"
     base_state["draft_response"] = "Incomplete response"
-    base_state["evaluation_feedback"] = (
-        "Missing next step and reference number."
-    )
+    base_state["evaluation_feedback"] = "Missing next step and reference number."
 
     result = revise_response(base_state)
 

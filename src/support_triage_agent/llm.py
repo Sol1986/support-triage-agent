@@ -10,7 +10,6 @@ from support_triage_agent.config import (
     get_gemini_model,
 )
 
-
 TicketCategory = Literal[
     "billing",
     "technical",
@@ -36,9 +35,7 @@ class ResponseResult(BaseModel):
 class GeminiTicketService:
     def __init__(self) -> None:
         self.model = get_gemini_model()
-        self.client = genai.Client(
-            api_key=get_gemini_api_key()
-        )
+        self.client = genai.Client(api_key=get_gemini_api_key())
 
     def classify_ticket(
         self,
@@ -71,13 +68,9 @@ Ticket:
         )
 
         if not response.text:
-            raise RuntimeError(
-                "Gemini returned an empty classification."
-            )
+            raise RuntimeError("Gemini returned an empty classification.")
 
-        return ClassificationResult.model_validate_json(
-            response.text
-        )
+        return ClassificationResult.model_validate_json(response.text)
 
     def draft_response(
         self,
@@ -116,9 +109,7 @@ Requirements:
         )
 
         if not response.text:
-            raise RuntimeError(
-                "Gemini returned an empty draft."
-            )
+            raise RuntimeError("Gemini returned an empty draft.")
 
         return ResponseResult.model_validate_json(response.text)
 
@@ -167,9 +158,7 @@ Requirements:
         )
 
         if not response.text:
-            raise RuntimeError(
-                "Gemini returned an empty revision."
-            )
+            raise RuntimeError("Gemini returned an empty revision.")
 
         return ResponseResult.model_validate_json(response.text)
 

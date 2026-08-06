@@ -20,11 +20,7 @@ def process_ticket(ticket_text: str) -> TicketState:
         "revision_count": 0,
         "requires_human_review": False,
         "llm_enabled": llm_enabled,
-        "model_used": (
-            get_gemini_model()
-            if llm_enabled
-            else "deterministic-rules"
-        ),
+        "model_used": (get_gemini_model() if llm_enabled else "deterministic-rules"),
     }
 
     final_state = support_graph.invoke(initial_state)

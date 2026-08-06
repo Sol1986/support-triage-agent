@@ -13,7 +13,6 @@ from support_triage_agent.nodes import (
 )
 from support_triage_agent.state import TicketState
 
-
 MAX_REVISIONS = 2
 
 
