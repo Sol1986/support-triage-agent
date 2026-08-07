@@ -3,6 +3,7 @@ from typing import Literal
 
 from google import genai
 from google.genai import types
+from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from support_triage_agent.config import (
@@ -37,6 +38,15 @@ class GeminiTicketService:
         self.model = get_gemini_model()
         self.client = genai.Client(api_key=get_gemini_api_key())
 
+    @traceable(
+        name="gemini_generate_content",
+        run_type="llm",
+        tags=["gemini", "support-triage"],
+        metadata={
+            "environment": "azure",
+            "model": "gemini-3.6-flash",
+        },
+    )
     def classify_ticket(
         self,
         ticket_text: str,
@@ -52,7 +62,6 @@ Allowed categories:
 - general: requests that do not fit another category
 
 Return the single best category.
-
 Ticket:
 {ticket_text}
 """
@@ -72,6 +81,15 @@ Ticket:
 
         return ClassificationResult.model_validate_json(response.text)
 
+    @traceable(
+        name="gemini_generate_content",
+        run_type="llm",
+        tags=["gemini", "support-triage"],
+        metadata={
+            "environment": "azure",
+            "model": "gemini-3.6-flash",
+        },
+    )
     def draft_response(
         self,
         ticket_text: str,
@@ -113,6 +131,15 @@ Requirements:
 
         return ResponseResult.model_validate_json(response.text)
 
+    @traceable(
+        name="gemini_generate_content",
+        run_type="llm",
+        tags=["gemini", "support-triage"],
+        metadata={
+            "environment": "azure",
+            "model": "gemini-3.6-flash",
+        },
+    )
     def revise_response(
         self,
         ticket_text: str,
