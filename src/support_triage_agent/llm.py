@@ -3,14 +3,13 @@ from typing import Literal
 
 from google import genai
 from google.genai import types
+from langsmith import traceable
 from pydantic import BaseModel, Field
 
 from support_triage_agent.config import (
     get_gemini_api_key,
     get_gemini_model,
 )
-
-from langsmith import traceable
 
 TicketCategory = Literal[
     "billing",
@@ -82,14 +81,13 @@ Ticket:
 
         return ClassificationResult.model_validate_json(response.text)
 
-
     @traceable(
-    name="gemini_generate_content",
-    run_type="llm",
-    tags=["gemini", "support-triage"],
-    metadata={
-        "environment": "azure",
-        "model": "gemini-3.6-flash",
+        name="gemini_generate_content",
+        run_type="llm",
+        tags=["gemini", "support-triage"],
+        metadata={
+            "environment": "azure",
+            "model": "gemini-3.6-flash",
         },
     )
     def draft_response(
@@ -132,7 +130,6 @@ Requirements:
             raise RuntimeError("Gemini returned an empty draft.")
 
         return ResponseResult.model_validate_json(response.text)
-
 
     @traceable(
         name="gemini_generate_content",
