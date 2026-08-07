@@ -1,0 +1,45 @@
+groups:
+  - name: support-triage-alerts
+    rules:
+      - alert: SupportTriageHighServerErrorRate
+        expr: |
+          (
+            sum(rate(support_triage_http_requests_total{status_code=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(support_triage_http_requests_total[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Support Triage server error rate is above 5 percent
+          description: More than 5 percent of recent API requests returned 5xx responses.
+
+      - alert: SupportTriageSlowP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(support_triage_http_request_duration_seconds_bucket[5m])
+            )
+          ) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Support Triage p95 latency is above five seconds
+          description: The slowest 5 percent of requests are taking more than five seconds.
+
+      - alert: SupportTriageClientErrorsDetected
+        expr: |
+          sum(
+            rate(
+              support_triage_http_requests_total{status_code=~"4.."}[1m]
+            )
+          ) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Client errors detected
+          description: The API has recently returned one or more 4xx responses.

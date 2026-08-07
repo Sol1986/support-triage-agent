@@ -44,11 +44,11 @@ output "container_app_name" {
 }
 
 output "container_app_fqdn" {
-  description = "Public Container App hostname."
-  value       = azurerm_container_app.api.latest_revision_fqdn
+  description = "Stable public Container App hostname."
+  value       = azurerm_container_app.api.ingress[0].fqdn
 }
 
 output "container_app_url" {
-  description = "Public HTTPS URL."
-  value       = "https://${azurerm_container_app.api.latest_revision_fqdn}"
+  description = "Stable public HTTPS URL."
+  value       = "https://${azurerm_container_app.api.ingress[0].fqdn}"
 }

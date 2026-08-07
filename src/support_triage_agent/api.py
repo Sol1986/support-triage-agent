@@ -1,8 +1,12 @@
+import logging
 from collections.abc import Generator
 from contextlib import asynccontextmanager
+from time import perf_counter
 from typing import Annotated
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -20,6 +24,13 @@ from support_triage_agent.models import (
     TicketRequest,
     TicketResponse,
 )
+from support_triage_agent.observability import (
+    HTTP_REQUEST_DURATION,
+    HTTP_REQUESTS,
+    configure_logging,
+    record_ticket_result,
+    request_id_context,
+)
 from support_triage_agent.pipeline import process_ticket
 from support_triage_agent.repository import (
     get_ticket,
@@ -36,6 +47,10 @@ async def lifespan(app: FastAPI):
     yield
 
 
+configure_logging()
+logger = logging.getLogger(__name__)
+
+
 app = FastAPI(
     title="Support Ticket Triage API",
     description=(
@@ -46,6 +61,78 @@ app = FastAPI(
     version="0.8.0",
     lifespan=lifespan,
 )
+
+
+# Prometheus metrics endpoint
+@app.middleware("http")
+async def observe_http_request(
+    request: Request,
+    call_next,
+) -> Response:
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    context_token = request_id_context.set(request_id)
+
+    method = request.method
+    path = request.url.path
+    status_code = 500
+    started_at = perf_counter()
+
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    except Exception as exc:
+        logger.exception(
+            "request_failed",
+            extra={
+                "event": "request_failed",
+                "method": method,
+                "path": path,
+                "status_code": 500,
+                "error_type": type(exc).__name__,
+            },
+        )
+        raise
+
+    finally:
+        duration_seconds = perf_counter() - started_at
+
+        HTTP_REQUESTS.labels(
+            method=method,
+            path=path,
+            status_code=str(status_code),
+        ).inc()
+
+        HTTP_REQUEST_DURATION.labels(
+            method=method,
+            path=path,
+        ).observe(duration_seconds)
+
+        logger.info(
+            "request_completed",
+            extra={
+                "event": "request_completed",
+                "method": method,
+                "path": path,
+                "status_code": status_code,
+                "duration_ms": round(duration_seconds * 1000, 2),
+            },
+        )
+
+        request_id_context.reset(context_token)
+
+
+@app.get(
+    "/metrics",
+    include_in_schema=False,
+)
+def metrics() -> Response:
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
 
 
 @app.get("/", tags=["System"])
@@ -97,6 +184,7 @@ def analyze_ticket(
 ) -> TicketResponse:
     try:
         result = process_ticket(request.ticket_text)
+        record_ticket_result(result)
         return TicketResponse(**result)
 
     except ValueError as error:

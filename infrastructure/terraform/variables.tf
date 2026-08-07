@@ -52,5 +52,11 @@ variable "gemini_api_key" {
 variable "container_image_tag" {
   description = "Docker image tag deployed to Azure Container Apps."
   type        = string
-  default     = "0.9.0"
+  default     = "0.10.0"
+}
+
+variable "langsmith_api_key" {
+  description = "LangSmith API key used for LangGraph tracing."
+  type        = string
+  sensitive   = true
 }

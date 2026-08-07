@@ -33,6 +33,11 @@ resource "azurerm_container_app" "api" {
     value = var.gemini_api_key
   }
 
+  secret {
+    name  = "langsmith-api-key"
+    value = var.langsmith_api_key
+  }
+
   ingress {
     external_enabled           = true
     allow_insecure_connections = false
@@ -85,6 +90,21 @@ resource "azurerm_container_app" "api" {
         secret_name = "gemini-api-key"
       }
 
+      env {
+        name  = "LANGSMITH_TRACING"
+        value = "true"
+      }
+
+      env {
+        name  = "LANGSMITH_PROJECT"
+        value = "support-triage-azure"
+      }
+
+      env {
+        name        = "LANGSMITH_API_KEY"
+        secret_name = "langsmith-api-key"
+      }
+
       startup_probe {
         transport               = "HTTP"
         port                    = 8000
@@ -124,3 +144,4 @@ resource "azurerm_container_app" "api" {
 
   tags = local.common_tags
 }
+
