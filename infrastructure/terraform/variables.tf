@@ -42,3 +42,15 @@ variable "postgres_admin_password" {
     error_message = "The PostgreSQL password must contain at least 12 characters."
   }
 }
+
+variable "gemini_api_key" {
+  description = "Gemini API key used by the application."
+  type        = string
+  sensitive   = true
+}
+
+variable "container_image_tag" {
+  description = "Docker image tag deployed to Azure Container Apps."
+  type        = string
+  default     = "0.9.0"
+}
