@@ -12,3 +12,16 @@ htmlcov/
 # Virtual environments
 .venv
 .env
+
+# Terraform working files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+crash.log
+stage-9-resource-inventory.json
+
+# Keep the dependency lock file
+!**/.terraform.lock.hcl
