@@ -22,16 +22,14 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md ./
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync \
+RUN uv sync \
     --locked \
     --no-dev \
     --no-install-project
 
 COPY src ./src
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync \
+RUN uv sync \
     --locked \
     --no-dev \
     --no-editable
