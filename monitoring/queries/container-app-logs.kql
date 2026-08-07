@@ -1,0 +1,33 @@
+// Recent application console logs
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(1h)
+| where ContainerAppName_s == "ca-support-triage-api-tf"
+| project TimeGenerated, RevisionName_s, Log_s
+| order by TimeGenerated desc
+| take 100
+
+// Recent Container Apps system logs
+ContainerAppSystemLogs_CL
+| where TimeGenerated > ago(1h)
+| where ContainerAppName_s == "ca-support-triage-api-tf"
+| project TimeGenerated, RevisionName_s, Reason_s, Log_s
+| order by TimeGenerated desc
+| take 100
+
+// Possible application failures
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(24h)
+| where ContainerAppName_s == "ca-support-triage-api-tf"
+| where Log_s contains "ERROR"
+    or Log_s contains "Exception"
+    or Log_s contains "failed"
+    or Log_s contains "timeout"
+| project TimeGenerated, RevisionName_s, Log_s
+| order by TimeGenerated desc
+
+// Log volume by application revision
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(24h)
+| where ContainerAppName_s == "ca-support-triage-api-tf"
+| summarize LogCount = count() by RevisionName_s
+| order by LogCount desc
