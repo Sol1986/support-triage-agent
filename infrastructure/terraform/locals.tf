@@ -11,6 +11,7 @@ locals {
   identity_name           = "id-${var.project_name}-${var.environment}"
   log_workspace_name      = "log-${var.project_name}-${var.environment}"
   container_env_name      = "cae-${var.project_name}-${var.environment}"
+  container_app_name      = "ca-${var.project_name}-api-${var.environment}"
 
   common_tags = {
     project     = var.project_name

@@ -37,3 +37,18 @@ output "database_name" {
   description = "Application database."
   value       = azurerm_postgresql_flexible_server_database.support_triage.name
 }
+
+output "container_app_name" {
+  description = "Terraform-managed Container App name."
+  value       = azurerm_container_app.api.name
+}
+
+output "container_app_fqdn" {
+  description = "Public Container App hostname."
+  value       = azurerm_container_app.api.latest_revision_fqdn
+}
+
+output "container_app_url" {
+  description = "Public HTTPS URL."
+  value       = "https://${azurerm_container_app.api.latest_revision_fqdn}"
+}
