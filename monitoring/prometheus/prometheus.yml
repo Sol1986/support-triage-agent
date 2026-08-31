@@ -7,8 +7,8 @@ rule_files:
 
 scrape_configs:
   - job_name: support-triage-azure
-    scheme: https
+    scheme: http
     metrics_path: /metrics
     static_configs:
       - targets:
-          - ca-support-triage-api-tf.lemonbush-3aaea9aa.canadacentral.azurecontainerapps.io
+          - api:8000

@@ -12,6 +12,9 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
+    networks:
+      - default
+      - backend
     restart: unless-stopped
 
   grafana:
@@ -29,3 +32,8 @@ services:
 volumes:
   prometheus-data:
   grafana-data:
+
+networks:
+  backend:
+    name: support-triage_backend
+    external: true

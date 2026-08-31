@@ -1,9 +1,12 @@
+"""Interactive CLI for triaging tickets one at a time from the terminal."""
+
 import json
 
 from support_triage_agent.pipeline import process_ticket
 
 
 def main() -> None:
+    """Read tickets from stdin in a loop and print the resulting graph state."""
     print("LangGraph Support Ticket Triage")
     print("Type 'exit' to stop.\n")
 

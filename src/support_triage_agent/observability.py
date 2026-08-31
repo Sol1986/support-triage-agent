@@ -1,3 +1,10 @@
+"""Structured logging and Prometheus metrics for the API.
+
+Metric objects are module-level singletons (Prometheus's convention) so every
+importer shares the same counters/histograms rather than registering
+duplicates.
+"""
+
 import json
 import logging
 import sys
@@ -7,6 +14,8 @@ from typing import Any
 
 from prometheus_client import Counter, Histogram
 
+# Set per-request by api.observe_http_request and read by JsonLogFormatter so
+# every log line emitted during a request carries its correlation id.
 request_id_context: ContextVar[str] = ContextVar(
     "request_id",
     default="-",
@@ -101,6 +110,7 @@ def record_ticket_result(result: Any) -> None:
     """Update business metrics without logging customer ticket text."""
 
     def read_value(name: str, default: Any) -> Any:
+        """Read a field from `result`, which may be a dict or a state/model object."""
         if isinstance(result, dict):
             return result.get(name, default)
 

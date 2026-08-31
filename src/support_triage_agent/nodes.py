@@ -1,6 +1,17 @@
+"""LangGraph node functions for the support-triage workflow.
+
+Every node takes the full `TicketState` and returns a partial dict of the
+fields it updates (LangGraph merges these back into state). When
+`state["llm_enabled"]` is true, classification and drafting steps delegate to
+Gemini via `llm.py`; otherwise they fall back to the deterministic
+keyword/template rules defined below, so the graph always works without an
+API key.
+"""
+
 from support_triage_agent.llm import get_llm_service
 from support_triage_agent.state import TicketState
 
+# Keyword lists used for rules-based classification/prioritization when the LLM is disabled.
 CATEGORY_KEYWORDS = {
     "billing": [
         "bill",
@@ -54,6 +65,7 @@ MEDIUM_PRIORITY_KEYWORDS = [
 
 
 def validate_ticket(state: TicketState) -> dict:
+    """Reject empty or too-short ticket text before it reaches classification."""
     cleaned_ticket = state["ticket_text"].strip()
 
     if not cleaned_ticket:
@@ -66,6 +78,7 @@ def validate_ticket(state: TicketState) -> dict:
 
 
 def classify_ticket(state: TicketState) -> dict:
+    """Assign a category, via Gemini if enabled, else the first matching keyword group."""
     if state["llm_enabled"]:
         service = get_llm_service()
         result = service.classify_ticket(state["ticket_text"])
@@ -74,6 +87,7 @@ def classify_ticket(state: TicketState) -> dict:
 
     ticket_lower = state["ticket_text"].lower()
 
+    # Dict insertion order determines precedence when a ticket matches multiple categories.
     for category, keywords in CATEGORY_KEYWORDS.items():
         if any(keyword in ticket_lower for keyword in keywords):
             return {"category": category}
@@ -82,6 +96,7 @@ def classify_ticket(state: TicketState) -> dict:
 
 
 def assign_priority(state: TicketState) -> dict:
+    """Rank urgency from keyword signals; every ticket is flagged for human review."""
     ticket_lower = state["ticket_text"].lower()
 
     if any(keyword in ticket_lower for keyword in HIGH_PRIORITY_KEYWORDS):
@@ -93,17 +108,20 @@ def assign_priority(state: TicketState) -> dict:
 
     return {
         "priority": priority,
+        # Always true today: every ticket is routed to a human regardless of priority.
         "requires_human_review": True,
     }
 
 
 def create_summary(state: TicketState) -> dict:
+    """Produce a short internal summary line for the ticket."""
     summary = f"Customer submitted a {state['category']} support request."
 
     return {"summary": summary}
 
 
 def draft_response(state: TicketState) -> dict:
+    """Write the first customer-facing response, via Gemini if enabled else a template."""
     if state["llm_enabled"]:
         service = get_llm_service()
 
@@ -141,6 +159,13 @@ def draft_response(state: TicketState) -> dict:
 
 
 def evaluate_response(state: TicketState) -> dict:
+    """Score the draft response against required content checks.
+
+    The score starts at a 4/10 baseline and gains 2 points per check passed,
+    so a response hitting all three checks scores 10 and one hitting none
+    scores 4. `graph.route_after_evaluation` sends anything under 8 back for
+    revision (up to `graph.MAX_REVISIONS` times).
+    """
     response = state["draft_response"].lower()
 
     required_elements = {
@@ -172,6 +197,7 @@ def evaluate_response(state: TicketState) -> dict:
 
 
 def revise_response(state: TicketState) -> dict:
+    """Rewrite the draft to address `evaluate_response` feedback and bump the revision count."""
     if state["llm_enabled"]:
         service = get_llm_service()
 

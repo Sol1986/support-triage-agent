@@ -2,6 +2,12 @@ from typing import TypedDict
 
 
 class TicketState(TypedDict):
+    """Shared state threaded through every node of the LangGraph triage workflow.
+
+    Each node reads the fields it needs and returns a partial dict of updates;
+    LangGraph merges those updates back into this state between node calls.
+    """
+
     ticket_text: str
     category: str
     priority: str

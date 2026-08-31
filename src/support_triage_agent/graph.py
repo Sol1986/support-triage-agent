@@ -1,6 +1,13 @@
+"""Builds the LangGraph state machine that drives ticket triage.
+
+Pipeline: validate -> classify -> assign_priority -> summarize -> draft
+-> evaluate -> (finish | revise -> evaluate, looping up to MAX_REVISIONS times).
+"""
+
 from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from support_triage_agent.nodes import (
     assign_priority,
@@ -19,6 +26,7 @@ MAX_REVISIONS = 2
 def route_after_evaluation(
     state: TicketState,
 ) -> Literal["finish", "revise"]:
+    """Decide whether the draft is good enough or needs another revision pass."""
     score = state["evaluation_score"]
     revision_count = state["revision_count"]
 
@@ -31,7 +39,8 @@ def route_after_evaluation(
     return "revise"
 
 
-def build_graph():
+def build_graph() -> CompiledStateGraph:
+    """Wire up and compile the triage graph's nodes and edges."""
     graph_builder = StateGraph(TicketState)
 
     graph_builder.add_node("validate_ticket", validate_ticket)
@@ -81,4 +90,5 @@ def build_graph():
     return graph_builder.compile()
 
 
+# Compiled once at import time and reused by pipeline.process_ticket for every request.
 support_graph = build_graph()

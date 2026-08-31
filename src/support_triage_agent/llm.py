@@ -1,3 +1,9 @@
+"""Gemini-backed implementations of the LLM-enabled triage steps.
+
+Each method mirrors a deterministic fallback in `nodes.py`; when
+`LLM_ENABLED` is set, nodes call these instead of the keyword/template logic.
+"""
+
 from functools import lru_cache
 from typing import Literal
 
@@ -11,6 +17,8 @@ from support_triage_agent.config import (
     get_gemini_model,
 )
 
+# Kept in sync with CATEGORY_KEYWORDS in nodes.py so LLM and rules-based
+# classification always produce the same set of possible categories.
 TicketCategory = Literal[
     "billing",
     "technical",
@@ -21,12 +29,16 @@ TicketCategory = Literal[
 
 
 class ClassificationResult(BaseModel):
+    """Structured output schema Gemini must fill in for `classify_ticket`."""
+
     category: TicketCategory = Field(
         description="The best category for the support ticket."
     )
 
 
 class ResponseResult(BaseModel):
+    """Structured output schema Gemini must fill in for drafting/revising a response."""
+
     response: str = Field(
         min_length=20,
         description="The customer-facing support response.",
@@ -34,6 +46,8 @@ class ResponseResult(BaseModel):
 
 
 class GeminiTicketService:
+    """Thin wrapper around the Gemini client for the triage graph's LLM calls."""
+
     def __init__(self) -> None:
         self.model = get_gemini_model()
         self.client = genai.Client(api_key=get_gemini_api_key())
@@ -51,6 +65,7 @@ class GeminiTicketService:
         self,
         ticket_text: str,
     ) -> ClassificationResult:
+        """Ask Gemini to pick one of the fixed `TicketCategory` values for a ticket."""
         prompt = f"""
 Classify the following customer support ticket.
 
@@ -96,6 +111,7 @@ Ticket:
         category: str,
         priority: str,
     ) -> ResponseResult:
+        """Draft the initial customer-facing response for a classified ticket."""
         prompt = f"""
 Write a concise customer-support response.
 
@@ -148,6 +164,7 @@ Requirements:
         current_response: str,
         feedback: str,
     ) -> ResponseResult:
+        """Rewrite a draft response to address gaps found by `nodes.evaluate_response`."""
         prompt = f"""
 Improve the customer-support response using the evaluator feedback.
 
@@ -192,4 +209,5 @@ Requirements:
 
 @lru_cache
 def get_llm_service() -> GeminiTicketService:
+    """Return a process-wide singleton so the Gemini client is created once."""
     return GeminiTicketService()
