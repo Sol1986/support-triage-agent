@@ -1,3 +1,10 @@
+"""Ad-hoc script to inspect node-by-node state updates for a single sample ticket.
+
+Streams `support_graph` with stream_mode="updates" so each printed event shows
+only the fields the just-run node changed, rather than the full state.
+Run directly: `python inspect_graph.py`.
+"""
+
 from support_triage_agent.graph import support_graph
 
 initial_state = {

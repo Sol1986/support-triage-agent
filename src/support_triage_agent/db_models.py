@@ -1,3 +1,5 @@
+"""SQLAlchemy ORM models for persisted ticket data."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
@@ -8,10 +10,9 @@ from support_triage_agent.database import Base
 from support_triage_agent.models import TicketResponse
 
 
-# This file defines the database models for the support triage agent application. It uses SQLAlchemy's ORM to map Python classes to database tables. The `TicketRecord` class represents a ticket in the system, with various attributes such as ticket text, category, priority, summary, draft response, evaluation score and feedback, revision count, human review requirement, LLM enablement, model used, and creation timestamp. Each attribute is mapped to a corresponding column in the "tickets" table in the database.
-# This maps a Python class to a PostgreSQL table
-# The `TicketRecord` class represents a ticket in the system, with various attributes such as ticket text, category, priority, summary, draft response, evaluation score and feedback, revision count, human review requirement, LLM enablement, model used, and creation timestamp. Each attribute is mapped to a corresponding column in the "tickets" table in the database.
 class TicketRecord(Base):
+    """A processed ticket persisted to the "tickets" table, mirroring `TicketState`."""
+
     __tablename__ = "tickets"
 
     id: Mapped[int] = mapped_column(
@@ -83,8 +84,11 @@ class TicketRecord(Base):
     )
 
 
-# from_attributes=True allows Pydantic to create an API response from a SQLAlchemy object.
+# NOTE: duplicates models.StoredTicketResponse/ReadinessResponse, which are what api.py
+# actually imports. Kept as-is (unused) to avoid changing behavior outside this doc pass.
 class StoredTicketResponse(TicketResponse):
+    """Unused duplicate of `models.StoredTicketResponse`."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -92,5 +96,7 @@ class StoredTicketResponse(TicketResponse):
 
 
 class ReadinessResponse(BaseModel):
+    """Unused duplicate of `models.ReadinessResponse`."""
+
     status: str
     database: str

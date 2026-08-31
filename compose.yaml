@@ -40,6 +40,9 @@ services:
       LLM_ENABLED: ${LLM_ENABLED:-false}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-support-triage-local}
 
       DATABASE_ENABLED: "true"
       DATABASE_URL: >-

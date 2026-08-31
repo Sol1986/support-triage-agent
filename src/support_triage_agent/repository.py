@@ -1,3 +1,9 @@
+"""Database access functions for ticket records.
+
+Isolated from `api.py` and the LangGraph nodes so neither has to know about
+SQLAlchemy directly.
+"""
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -5,12 +11,11 @@ from support_triage_agent.db_models import TicketRecord
 from support_triage_agent.state import TicketState
 
 
-# This file defines the repository functions for interacting with the database in the support triage agent application. It provides functions to save a ticket, list tickets with pagination, and retrieve a specific ticket by its ID. The functions use SQLAlchemy's ORM to perform database operations on the `TicketRecord` model.
-# The repository layer isolates database operations from FastAPI and LangGraph.
 def save_ticket(
     session: Session,
     result: TicketState,
 ) -> TicketRecord:
+    """Persist a completed triage result and return the row with its assigned id."""
     record = TicketRecord(
         ticket_text=result["ticket_text"],
         category=result["category"],
@@ -37,6 +42,7 @@ def list_tickets(
     limit: int = 20,
     offset: int = 0,
 ) -> list[TicketRecord]:
+    """Return the most recent tickets, newest first, paginated by limit/offset."""
     statement = (
         select(TicketRecord)
         .order_by(TicketRecord.created_at.desc())
@@ -51,4 +57,5 @@ def get_ticket(
     session: Session,
     ticket_id: int,
 ) -> TicketRecord | None:
+    """Fetch a single ticket by id, or None if it doesn't exist."""
     return session.get(TicketRecord, ticket_id)

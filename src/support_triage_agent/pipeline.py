@@ -7,6 +7,11 @@ from support_triage_agent.state import TicketState
 
 
 def process_ticket(ticket_text: str) -> TicketState:
+    """Run a raw ticket string through the triage graph and return the final state.
+
+    This is the single entry point used by both the API layer and the CLI, so
+    the initial-state shape only has to be assembled correctly in one place.
+    """
     llm_enabled = is_llm_enabled()
 
     initial_state: TicketState = {

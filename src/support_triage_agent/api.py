@@ -1,3 +1,5 @@
+"""FastAPI application exposing the ticket-triage graph over HTTP."""
+
 import logging
 from collections.abc import Generator
 from contextlib import asynccontextmanager
@@ -9,6 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, s
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.middleware.base import RequestResponseEndpoint
 
 from support_triage_agent.config import is_database_enabled
 from support_triage_agent.database import (
@@ -41,6 +44,7 @@ from support_triage_agent.repository import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Create database tables on startup, if persistence is enabled."""
     if is_database_enabled():
         init_database()
 
@@ -63,12 +67,12 @@ app = FastAPI(
 )
 
 
-# Prometheus metrics endpoint
 @app.middleware("http")
 async def observe_http_request(
     request: Request,
-    call_next,
+    call_next: RequestResponseEndpoint,
 ) -> Response:
+    """Tag every request with a correlation id and record Prometheus/log metrics for it."""
     request_id = request.headers.get("X-Request-ID") or str(uuid4())
     context_token = request_id_context.set(request_id)
 
@@ -129,6 +133,7 @@ async def observe_http_request(
     include_in_schema=False,
 )
 def metrics() -> Response:
+    """Expose metrics in Prometheus text format for scraping."""
     return Response(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
@@ -137,6 +142,7 @@ def metrics() -> Response:
 
 @app.get("/", tags=["System"])
 def read_root() -> dict[str, str]:
+    """Basic service info and links, mainly for humans poking at the API."""
     return {
         "service": "Support Ticket Triage API",
         "documentation": "/docs",
@@ -151,6 +157,7 @@ def read_root() -> dict[str, str]:
     tags=["System"],
 )
 def health_check() -> HealthResponse:
+    """Liveness probe: confirms the process is running, independent of its dependencies."""
     return HealthResponse(
         status="healthy",
         service="support-ticket-triage",
@@ -162,6 +169,7 @@ def health_check() -> HealthResponse:
     tags=["Tickets"],
 )
 def list_categories() -> dict[str, list[str]]:
+    """List the fixed set of categories a ticket can be classified into."""
     return {
         "categories": [
             "billing",
@@ -182,6 +190,7 @@ def list_categories() -> dict[str, list[str]]:
 def analyze_ticket(
     request: TicketRequest,
 ) -> TicketResponse:
+    """Run a ticket through the triage graph without persisting the result."""
     try:
         result = process_ticket(request.ticket_text)
         record_ticket_result(result)
@@ -200,8 +209,12 @@ def analyze_ticket(
         ) from error
 
 
-# FastAPI will: Open a database session. Pass it to the endpoint. Execute the endpoint. Close the session afterward.
 def require_database() -> Generator[Session, None, None]:
+    """FastAPI dependency: yields a session, closing it after the endpoint runs.
+
+    Raises 503 up front if persistence is disabled, so endpoints that depend
+    on this don't need their own database-enabled check.
+    """
     if not is_database_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -222,14 +235,13 @@ DatabaseSession = Annotated[
 ]
 
 
-# database_is_ready() checks if the database is available and can execute a simple query. If the database is not ready, it raises an HTTP 503 Service Unavailable error. If the database is ready, it returns a ReadinessResponse indicating that the service is ready and the database is connected.
-# Is the application ready to handle database work?
 @app.get(
     "/ready",
     response_model=ReadinessResponse,
     tags=["System"],
 )
 def readiness_check() -> ReadinessResponse:
+    """Readiness probe: confirms the database (if enabled) can actually be reached."""
     if not is_database_enabled():
         return ReadinessResponse(
             status="ready",
@@ -248,7 +260,6 @@ def readiness_check() -> ReadinessResponse:
     )
 
 
-# database session is passed to the endpoint function. The endpoint function uses the session to save a ticket to the database. If the ticket is saved successfully, it returns the stored ticket response. If there is a ValueError during ticket processing, it rolls back the session and raises an HTTP 400 Bad Request error. If there is a SQLAlchemyError during ticket storage, it rolls back the session and raises an HTTP 503 Service Unavailable error.
 @app.post(
     "/tickets",
     response_model=StoredTicketResponse,
@@ -259,6 +270,7 @@ def create_stored_ticket(
     request: TicketRequest,
     session: DatabaseSession,
 ) -> TicketRecord:
+    """Run a ticket through the triage graph and persist the result."""
     try:
         result = process_ticket(request.ticket_text)
         return save_ticket(session, result)
@@ -280,7 +292,6 @@ def create_stored_ticket(
         ) from error
 
 
-# database session is passed to the endpoint function. The endpoint function uses the session to list tickets from the database with pagination. It returns a list of stored ticket responses.
 @app.get(
     "/tickets",
     response_model=list[StoredTicketResponse],
@@ -291,6 +302,7 @@ def read_tickets(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[TicketRecord]:
+    """List previously stored tickets, most recent first."""
     return list_tickets(
         session=session,
         limit=limit,
@@ -298,7 +310,6 @@ def read_tickets(
     )
 
 
-# database session is passed to the endpoint function. The endpoint function uses the session to retrieve a specific ticket by its ID. If the ticket is found, it returns the stored ticket response. If the ticket is not found, it raises an HTTP 404 Not Found error.
 @app.get(
     "/tickets/{ticket_id}",
     response_model=StoredTicketResponse,
@@ -308,6 +319,7 @@ def read_ticket(
     ticket_id: int,
     session: DatabaseSession,
 ) -> TicketRecord:
+    """Fetch a single stored ticket by id, or 404 if it doesn't exist."""
     ticket = get_ticket(session, ticket_id)
 
     if ticket is None:
