@@ -1,0 +1,13 @@
+{
+  "ticket_text": "asdkjfh aslkdjf laksjdf blah blah incomprehensible gibberish text example ticket",
+  "category": "general",
+  "priority": "low",
+  "summary": "Customer submitted a general support request.",
+  "draft_response": "Thank you for reaching out regarding your general inquiry. We have created a support ticket for you with reference number #10024. As a next step, a specialist will review your message and follow up if more information is needed. Please note that a specific resolution is not guaranteed. If you have any further details to add, please reply directly to this message.",
+  "evaluation_score": 10,
+  "evaluation_feedback": "Response meets all required quality checks.",
+  "revision_count": 1,
+  "requires_human_review": false,
+  "llm_enabled": true,
+  "model_used": "gemini-3.6-flash"
+}

@@ -273,6 +273,7 @@ def create_stored_ticket(
     """Run a ticket through the triage graph and persist the result."""
     try:
         result = process_ticket(request.ticket_text)
+        record_ticket_result(result)
         return save_ticket(session, result)
 
     except ValueError as error:

@@ -1,0 +1,223 @@
+{
+  "title": "Support Triage Overview",
+  "uid": "support-triage-overview",
+  "editable": true,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "tags": ["support-triage"],
+  "panels": [
+    { "type": "row", "title": "Ticket pipeline", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "id": 100 },
+
+    {
+      "type": "stat",
+      "title": "Human escalation rate (15m)",
+      "id": 1,
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(support_triage_human_review_total[15m])) / clamp_min(sum(rate(support_triage_tickets_total[15m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "First-pass success rate (15m)",
+      "id": 2,
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(support_triage_first_pass_success_total[15m])) / clamp_min(sum(rate(support_triage_tickets_total[15m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Revision success rate (15m)",
+      "id": 3,
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(support_triage_revision_success_total[15m])) / clamp_min(sum(rate(support_triage_revision_attempted_total[15m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Evaluation failure rate (15m)",
+      "id": 4,
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(support_triage_evaluation_failures_total[15m])) / clamp_min(sum(rate(support_triage_tickets_total[15m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Tickets processed, by category",
+      "id": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (category) (rate(support_triage_tickets_total[5m]))",
+          "legendFormat": "{{category}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Revisions per ticket (p50 / p95)",
+      "id": 6,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(support_triage_ticket_revisions_bucket[15m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(support_triage_ticket_revisions_bucket[15m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ]
+    },
+
+    { "type": "row", "title": "Guardrails", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 }, "id": 101 },
+
+    {
+      "type": "timeseries",
+      "title": "LLM failures, by failure type",
+      "id": 7,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (failure_type) (rate(support_triage_llm_failures_total[5m]))",
+          "legendFormat": "{{failure_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Safety blocks and schema validation failures (1h totals)",
+      "id": 8,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(support_triage_llm_failures_total{failure_type=\"safety_block\"}[1h]))",
+          "legendFormat": "safety_block",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(support_triage_llm_failures_total{failure_type=\"schema_validation_failed\"}[1h]))",
+          "legendFormat": "schema_validation_failed",
+          "refId": "B"
+        }
+      ]
+    },
+
+    { "type": "row", "title": "LLM performance and cost", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }, "id": 102 },
+
+    {
+      "type": "timeseries",
+      "title": "LLM call latency, p95 by operation",
+      "id": 9,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(support_triage_llm_latency_seconds_bucket[5m])))",
+          "legendFormat": "{{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "Token usage, by operation and kind",
+      "id": 10,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (operation, kind) (rate(support_triage_llm_tokens_total[15m]))",
+          "legendFormat": "{{operation}} / {{kind}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Estimated Gemini spend (24h)",
+      "id": 11,
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 33 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(support_triage_llm_cost_estimated_usd_total[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "noValue": "Not configured (see GEMINI_INPUT/OUTPUT_PRICE_PER_MILLION_TOKENS)"
+        },
+        "overrides": []
+      }
+    },
+
+    { "type": "row", "title": "HTTP", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "id": 103 },
+
+    {
+      "type": "timeseries",
+      "title": "HTTP requests, by status code",
+      "id": 12,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (status_code) (rate(support_triage_http_requests_total[5m]))",
+          "legendFormat": "{{status_code}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP latency, p95",
+      "id": 13,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(support_triage_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{path}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    }
+  ]
+}

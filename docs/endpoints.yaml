@@ -1,0 +1,89 @@
+# Support Ticket Triage API — endpoint reference.
+# Simple hand-written summary; the full auto-generated OpenAPI spec is
+# available at /openapi.json (interactive docs at /docs) once the app is running.
+
+service: Support Ticket Triage API
+base_url: http://localhost:8000
+
+endpoints:
+  - method: GET
+    path: /
+    summary: Service info
+    response:
+      200: { service: string, documentation: string, health: string }
+
+  - method: GET
+    path: /health
+    summary: Liveness probe (process is up, independent of its dependencies)
+    response:
+      200: { status: string, service: string }
+
+  - method: GET
+    path: /ready
+    summary: Readiness probe (checks database connectivity when persistence is enabled)
+    response:
+      200: { status: string, database: string }
+      503: Database is unavailable
+
+  - method: GET
+    path: /categories
+    summary: List the fixed set of ticket categories
+    response:
+      200: { categories: [billing, technical, account, shipping, general] }
+
+  - method: GET
+    path: /metrics
+    summary: Prometheus metrics in text exposition format
+    response:
+      200: text/plain (Prometheus format)
+
+  - method: POST
+    path: /tickets/analyze
+    summary: Run a ticket through the triage graph WITHOUT persisting the result
+    request:
+      body: { ticket_text: string (10-5000 chars) }
+    response:
+      200:
+        category: string
+        priority: low | medium | high
+        summary: string
+        draft_response: string
+        evaluation_score: integer
+        evaluation_feedback: string
+        revision_count: integer
+        requires_human_review: boolean
+        llm_enabled: boolean
+        model_used: string
+      400: Ticket text invalid (empty, too short after trim)
+      422: Request body failed schema validation
+      500: Ticket processing failed
+
+  - method: POST
+    path: /tickets
+    summary: Run a ticket through the triage graph AND persist the result
+    requires: DATABASE_ENABLED=true
+    request:
+      body: { ticket_text: string (10-5000 chars) }
+    response:
+      201: "TicketResponse fields (see /tickets/analyze), plus id (integer) and created_at (datetime)"
+      400: Ticket text invalid
+      503: Database persistence is disabled or unavailable
+
+  - method: GET
+    path: /tickets
+    summary: List previously stored tickets, most recent first
+    requires: DATABASE_ENABLED=true
+    request:
+      query: { limit: integer (1-100, default 20), offset: integer (default 0) }
+    response:
+      200: array of StoredTicketResponse
+      503: Database persistence is disabled
+
+  - method: GET
+    path: /tickets/{ticket_id}
+    summary: Fetch a single stored ticket by id
+    requires: DATABASE_ENABLED=true
+    response:
+      200: StoredTicketResponse
+      404: Ticket not found
+      503: Database persistence is disabled

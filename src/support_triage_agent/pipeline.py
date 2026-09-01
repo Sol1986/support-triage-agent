@@ -26,6 +26,10 @@ def process_ticket(ticket_text: str) -> TicketState:
         "requires_human_review": False,
         "llm_enabled": llm_enabled,
         "model_used": (get_gemini_model() if llm_enabled else "deterministic-rules"),
+        "guardrail_flags": [],
+        "escalation_reason": None,
+        "initial_evaluation_score": 0,
+        "schema_validation_failed": False,
     }
 
     final_state = support_graph.invoke(initial_state)
