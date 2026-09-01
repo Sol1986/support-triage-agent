@@ -49,3 +49,40 @@ def get_database_url() -> str:
         raise RuntimeError("DATABASE_URL is missing. Add it to the environment.")
 
     return database_url
+
+
+def is_llm_judge_enabled() -> bool:
+    """Whether the eval harness should run its Gemini-backed judge evaluators.
+
+    Off by default so CI/unit-test runs of the harness never spend an LLM
+    call unless explicitly opted in.
+    """
+    value = os.getenv("LLM_JUDGE_ENABLED", "false")
+    return value.lower().strip() == "true"
+
+
+def get_gemini_input_price_per_million_tokens() -> float:
+    """USD per 1M input tokens, used only to derive the estimated-cost metric.
+
+    Defaults to 0 (estimate disabled) since Gemini pricing changes over time
+    and shouldn't be hardcoded; set both this and the output price to enable
+    `support_triage_llm_cost_estimated_usd_total`.
+    """
+    return float(os.getenv("GEMINI_INPUT_PRICE_PER_MILLION_TOKENS", "0"))
+
+
+def get_gemini_output_price_per_million_tokens() -> float:
+    """USD per 1M output tokens, used only to derive the estimated-cost metric."""
+    return float(os.getenv("GEMINI_OUTPUT_PRICE_PER_MILLION_TOKENS", "0"))
+
+
+def is_langsmith_enabled() -> bool:
+    """Whether LangSmith integrations (tracing, dataset upload, experiments) are active.
+
+    The LangSmith SDK reads `LANGSMITH_TRACING`/`LANGSMITH_API_KEY`/
+    `LANGSMITH_PROJECT` itself for auto-instrumentation; this is the one
+    canonical check our own code (e.g. `evals/langsmith_adapter.py`) uses
+    before touching the SDK at all.
+    """
+    value = os.getenv("LANGSMITH_TRACING", "false")
+    return value.lower().strip() == "true"

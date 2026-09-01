@@ -59,7 +59,7 @@ def test_classify_ticket_parses_response(monkeypatch, gemini_api_key) -> None:
 def test_classify_ticket_raises_on_empty_response(monkeypatch, gemini_api_key) -> None:
     service = make_service(monkeypatch, "")
 
-    with pytest.raises(RuntimeError, match="empty classification"):
+    with pytest.raises(RuntimeError, match="empty classify response"):
         service.classify_ticket("I was charged twice.")
 
 
@@ -111,7 +111,7 @@ def test_revise_response_parses_response(monkeypatch, gemini_api_key) -> None:
 def test_revise_response_raises_on_empty_response(monkeypatch, gemini_api_key) -> None:
     service = make_service(monkeypatch, "")
 
-    with pytest.raises(RuntimeError, match="empty revision"):
+    with pytest.raises(RuntimeError, match="empty revise response"):
         service.revise_response(
             ticket_text="I was charged twice.",
             category="billing",

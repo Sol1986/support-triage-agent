@@ -1,0 +1,13 @@
+{
+  "ticket_text": "I have a question about an invoice, can you help me understand a charge?",
+  "category": "billing",
+  "priority": "low",
+  "summary": "Customer submitted a billing support request.",
+  "draft_response": "Thank you for contacting us regarding your billing inquiry. We would be happy to help you understand the charge on your invoice. As a next step, a support specialist will review your account details and follow up with you. Your reference number for this ticket is #10293. Please let us know if you have any additional information to add.",
+  "evaluation_score": 10,
+  "evaluation_feedback": "Response meets all required quality checks.",
+  "revision_count": 1,
+  "requires_human_review": false,
+  "llm_enabled": true,
+  "model_used": "gemini-3.6-flash"
+}

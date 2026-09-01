@@ -47,7 +47,9 @@ def test_analyze_ticket_endpoint() -> None:
     assert body["priority"] == "high"
     assert body["evaluation_score"] == 10
     assert body["revision_count"] == 1
-    assert body["requires_human_review"] is True
+    # A routine duplicate-charge complaint matches none of the escalation
+    # policy's rules — see guardrails/policy.py.
+    assert body["requires_human_review"] is False
 
 
 def test_short_ticket_returns_422() -> None:

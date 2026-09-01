@@ -1,0 +1,13 @@
+{
+  "ticket_text": "Your service has been completely down for the last hour and my whole team can't work.",
+  "category": "technical",
+  "priority": "low",
+  "summary": "Customer submitted a technical support request.",
+  "draft_response": "Thank you for reaching out regarding your technical issue. We apologize for the service disruption impacting your team. Your report has been logged under reference number #84920. As a next step, our technical team is actively investigating the outage to restore full functionality. While we cannot guarantee a specific resolution timeframe, we will keep you updated on our progress.",
+  "evaluation_score": 10,
+  "evaluation_feedback": "Response meets all required quality checks.",
+  "revision_count": 1,
+  "requires_human_review": false,
+  "llm_enabled": true,
+  "model_used": "gemini-3.6-flash"
+}

@@ -1,0 +1,27 @@
+flowchart TD
+    START([START]) --> guard_input["guard_input\n(input guardrail)"]
+
+    guard_input -->|reject| END_REJECT([END])
+    guard_input -->|proceed| validate_ticket["validate_ticket"]
+
+    validate_ticket --> classify_ticket["classify_ticket\n(LLM or keywords)"]
+    classify_ticket --> assign_priority["assign_priority\n(always keywords)"]
+    assign_priority --> create_summary["create_summary"]
+    create_summary --> draft_response["draft_response\n(LLM or template)"]
+    draft_response --> evaluate_response["evaluate_response\n(deterministic score)"]
+
+    evaluate_response -->|"score >= 8\nor max revisions"| guard_output["guard_output\n(escalation policy)"]
+    evaluate_response -->|score < 8| revise_response["revise_response\n(LLM or template)"]
+    revise_response --> evaluate_response
+
+    guard_output --> END_FINISH([END])
+
+    classDef guardrail fill:#f9d5c0,stroke:#c2542a,stroke-width:2px
+    classDef llmCapable fill:#d6e8ff,stroke:#2a63c2,stroke-width:2px
+    classDef deterministic fill:#e6f4d7,stroke:#5a8f2a,stroke-width:1px
+    classDef terminal fill:#eee,stroke:#888,stroke-width:1px
+
+    class guard_input,guard_output guardrail
+    class classify_ticket,draft_response,revise_response llmCapable
+    class validate_ticket,assign_priority,create_summary,evaluate_response deterministic
+    class START,END_REJECT,END_FINISH terminal

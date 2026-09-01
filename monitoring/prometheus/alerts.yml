@@ -43,3 +43,37 @@ groups:
         annotations:
           summary: Client errors detected
           description: The API has recently returned one or more 4xx responses.
+
+      - alert: SupportTriageHighEscalationRate
+        expr: |
+          (
+            sum(rate(support_triage_human_review_total[15m]))
+            /
+            clamp_min(sum(rate(support_triage_tickets_total[15m])), 0.001)
+          ) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Support Triage human-escalation rate is above 50 percent
+          description: >
+            More than half of recently processed tickets required human review.
+            Check for a spike in adversarial/high-risk tickets, or a guardrail
+            policy regression (see guardrails/policy.py).
+
+      - alert: SupportTriageElevatedLLMFailureRate
+        expr: |
+          (
+            sum(rate(support_triage_llm_failures_total[10m]))
+            /
+            clamp_min(sum(rate(support_triage_llm_latency_seconds_count[10m])), 0.001)
+          ) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Support Triage LLM call failure rate is above 10 percent
+          description: >
+            More than 10 percent of recent Gemini calls failed structured-output
+            validation or were safety-blocked. Check support_triage_llm_failures_total
+            by "failure_type" to see whether it's schema or safety related.

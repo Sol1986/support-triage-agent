@@ -12,7 +12,10 @@ def test_complete_graph_processes_billing_ticket() -> None:
     assert result["priority"] == "high"
     assert result["evaluation_score"] == 10
     assert result["revision_count"] == 1
-    assert result["requires_human_review"] is True
+    # A routine duplicate-charge complaint matches none of the escalation
+    # policy's rules (no fraud/security/legal/PCI signal) — see
+    # guardrails/policy.py.
+    assert result["requires_human_review"] is False
 
 
 def test_graph_follows_revision_route(
@@ -29,7 +32,9 @@ def test_graph_follows_revision_route(
 
     assert executed_nodes.count("evaluate_response") == 2
     assert executed_nodes.count("revise_response") == 1
-    assert executed_nodes[-1] == "evaluate_response"
+    # guard_output runs after the loop converges, replacing the old
+    # straight-to-END edge from evaluate_response.
+    assert executed_nodes[-1] == "guard_output"
 
 
 def test_graph_rejects_empty_ticket() -> None:
@@ -49,4 +54,5 @@ def test_technical_issue_receives_medium_priority() -> None:
 
     assert result["category"] == "technical"
     assert result["priority"] == "medium"
-    assert result["requires_human_review"] is True
+    # A routine bug report matches none of the escalation policy's rules.
+    assert result["requires_human_review"] is False

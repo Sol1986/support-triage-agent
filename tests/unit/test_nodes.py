@@ -84,10 +84,25 @@ def test_assigns_high_priority(
     result = assign_priority(base_state)
 
     assert result["priority"] == "high"
-    assert result["requires_human_review"] is True
+    # requires_human_review is no longer assign_priority's responsibility —
+    # see guardrails/policy.py and tests/unit/guardrails/test_policy.py.
+    assert "requires_human_review" not in result
 
 
-def test_billing_requires_human_review(
+def test_assigns_high_priority_for_outage_language(
+    base_state: TicketState,
+) -> None:
+    base_state["ticket_text"] = (
+        "Your service has been completely down for the last hour and my whole team can't work."
+    )
+    base_state["category"] = "technical"
+
+    result = assign_priority(base_state)
+
+    assert result["priority"] == "high"
+
+
+def test_assigns_low_priority(
     base_state: TicketState,
 ) -> None:
     base_state["ticket_text"] = "I have a question about an invoice."
@@ -96,7 +111,6 @@ def test_billing_requires_human_review(
     result = assign_priority(base_state)
 
     assert result["priority"] == "low"
-    assert result["requires_human_review"] is True
 
 
 def test_first_draft_fails_evaluation(

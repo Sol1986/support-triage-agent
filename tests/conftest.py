@@ -17,6 +17,10 @@ def base_state() -> TicketState:
         "requires_human_review": False,
         "llm_enabled": False,
         "model_used": "deterministic-rules",
+        "guardrail_flags": [],
+        "escalation_reason": None,
+        "initial_evaluation_score": 0,
+        "schema_validation_failed": False,
     }
 
 

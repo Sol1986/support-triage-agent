@@ -1,0 +1,13 @@
+{
+  "ticket_text": "I think someone else has logged into my account, I did not request this password change.",
+  "category": "account",
+  "priority": "low",
+  "summary": "Customer submitted a account support request.",
+  "draft_response": "Hello, thank you for reaching out. We have logged your issue under the account category. As a next step, our team will investigate the unauthorized password change, though a resolution cannot be guaranteed. Your reference number for this case is #10928. We will follow up with you as soon as possible.",
+  "evaluation_score": 10,
+  "evaluation_feedback": "Response meets all required quality checks.",
+  "revision_count": 1,
+  "requires_human_review": true,
+  "llm_enabled": true,
+  "model_used": "gemini-3.6-flash"
+}

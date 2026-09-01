@@ -8,7 +8,10 @@ keyword/template rules defined below, so the graph always works without an
 API key.
 """
 
-from support_triage_agent.llm import get_llm_service
+from typing import get_args
+
+from support_triage_agent.guardrails import input_guard, output_guard, pii, policy
+from support_triage_agent.llm import TicketCategory, get_llm_service
 from support_triage_agent.state import TicketState
 
 # Keyword lists used for rules-based classification/prioritization when the LLM is disabled.
@@ -47,6 +50,15 @@ CATEGORY_KEYWORDS = {
     ],
 }
 
+# CATEGORY_KEYWORDS covers every classifiable category except "general" (the
+# fallback below), so the two must stay in sync or deterministic and
+# LLM-backed classification could silently diverge on which categories exist.
+assert set(CATEGORY_KEYWORDS) | {"general"} == set(get_args(TicketCategory)), (
+    "CATEGORY_KEYWORDS is out of sync with TicketCategory"
+)
+
+# Unlike CATEGORY_KEYWORDS, these drive `assign_priority` unconditionally —
+# priority is always keyword-based, even when llm_enabled is True.
 HIGH_PRIORITY_KEYWORDS = [
     "urgent",
     "immediately",
@@ -54,6 +66,12 @@ HIGH_PRIORITY_KEYWORDS = [
     "duplicate",
     "locked out",
     "cannot access",
+    "outage",
+    "completely down",
+    "service is down",
+    "system is down",
+    "can't work",
+    "cannot work",
 ]
 
 MEDIUM_PRIORITY_KEYWORDS = [
@@ -62,6 +80,27 @@ MEDIUM_PRIORITY_KEYWORDS = [
     "issue",
     "not working",
 ]
+
+
+def guard_input(state: TicketState) -> dict:
+    """Screen the raw ticket before it reaches the rest of the pipeline.
+
+    On rejection, `graph.route_after_input_guard` short-circuits straight to
+    `END` — the ticket never reaches classification or draft generation, and
+    is flagged for human review instead. `nodes.validate_ticket`'s own
+    empty/too-short check is unchanged and still runs for tickets that pass
+    this screening.
+    """
+    result = input_guard.check_input(state["ticket_text"])
+
+    if not result.accepted:
+        return {
+            "guardrail_flags": [*result.flags, "input_rejected"],
+            "requires_human_review": True,
+            "escalation_reason": result.rejection_reason,
+        }
+
+    return {"guardrail_flags": result.flags}
 
 
 def validate_ticket(state: TicketState) -> dict:
@@ -77,26 +116,52 @@ def validate_ticket(state: TicketState) -> dict:
     return {"ticket_text": cleaned_ticket}
 
 
-def classify_ticket(state: TicketState) -> dict:
-    """Assign a category, via Gemini if enabled, else the first matching keyword group."""
-    if state["llm_enabled"]:
-        service = get_llm_service()
-        result = service.classify_ticket(state["ticket_text"])
-
-        return {"category": result.category}
-
-    ticket_lower = state["ticket_text"].lower()
+def _classify_by_keyword(ticket_text: str) -> str:
+    """Deterministic fallback classifier: first matching keyword group wins."""
+    ticket_lower = ticket_text.lower()
 
     # Dict insertion order determines precedence when a ticket matches multiple categories.
     for category, keywords in CATEGORY_KEYWORDS.items():
         if any(keyword in ticket_lower for keyword in keywords):
+            return category
+
+    return "general"
+
+
+def classify_ticket(state: TicketState) -> dict:
+    """Assign a category, via Gemini if enabled, else the first matching keyword group.
+
+    A Gemini structured-output or safety failure falls back to the keyword
+    classifier rather than propagating, and flags the fallback for the
+    escalation policy (see `guardrails.output_guard`).
+    """
+    if state["llm_enabled"]:
+        service = get_llm_service()
+        ticket_text = state["ticket_text"]
+
+        category, guard_flags = output_guard.call_with_fallback(
+            lambda: service.classify_ticket(ticket_text).category,
+            lambda: _classify_by_keyword(ticket_text),
+        )
+
+        if not guard_flags:
             return {"category": category}
 
-    return {"category": "general"}
+        return {
+            "category": category,
+            "schema_validation_failed": "schema_validation_failed" in guard_flags,
+            "guardrail_flags": [*state.get("guardrail_flags", []), *guard_flags],
+        }
+
+    return {"category": _classify_by_keyword(state["ticket_text"])}
 
 
 def assign_priority(state: TicketState) -> dict:
-    """Rank urgency from keyword signals; every ticket is flagged for human review."""
+    """Rank urgency from keyword signals.
+
+    Final human-review escalation is decided later by `guard_output`'s
+    policy evaluation, not here.
+    """
     ticket_lower = state["ticket_text"].lower()
 
     if any(keyword in ticket_lower for keyword in HIGH_PRIORITY_KEYWORDS):
@@ -106,11 +171,7 @@ def assign_priority(state: TicketState) -> dict:
     else:
         priority = "low"
 
-    return {
-        "priority": priority,
-        # Always true today: every ticket is routed to a human regardless of priority.
-        "requires_human_review": True,
-    }
+    return {"priority": priority}
 
 
 def create_summary(state: TicketState) -> dict:
@@ -120,40 +181,64 @@ def create_summary(state: TicketState) -> dict:
     return {"summary": summary}
 
 
-def draft_response(state: TicketState) -> dict:
-    """Write the first customer-facing response, via Gemini if enabled else a template."""
-    if state["llm_enabled"]:
-        service = get_llm_service()
-
-        result = service.draft_response(
-            ticket_text=state["ticket_text"],
-            category=state["category"],
-            priority=state["priority"],
-        )
-
-        return {
-            "draft_response": result.response,
-            "revision_count": 0,
-        }
-
+def _draft_by_template(category: str, priority: str) -> str:
+    """Deterministic fallback draft used both when the LLM is disabled and
+    when a Gemini call fails its structured-output/safety guardrail."""
     response_templates = {
         "high": (
-            f"We received your {state['category']} support request "
+            f"We received your {category} support request "
             "and marked it as high priority. A support specialist "
             "will review the issue."
         ),
         "medium": (
-            f"We received your {state['category']} support request. "
+            f"We received your {category} support request. "
             "Our support team will review the issue."
         ),
         "low": (
-            f"We received your {state['category']} support request. "
-            "Our team will review it."
+            f"We received your {category} support request. Our team will review it."
         ),
     }
 
+    return response_templates[priority]
+
+
+def draft_response(state: TicketState) -> dict:
+    """Write the first customer-facing response, via Gemini if enabled else a template.
+
+    A Gemini structured-output or safety failure falls back to the template
+    rather than propagating, and flags the fallback for the escalation policy.
+    """
+    category = state["category"]
+    priority = state["priority"]
+
+    if state["llm_enabled"]:
+        service = get_llm_service()
+        ticket_text = state["ticket_text"]
+
+        response_text, guard_flags = output_guard.call_with_fallback(
+            lambda: (
+                service.draft_response(
+                    ticket_text=ticket_text,
+                    category=category,
+                    priority=priority,
+                ).response
+            ),
+            lambda: _draft_by_template(category, priority),
+        )
+
+        update = {"draft_response": response_text, "revision_count": 0}
+        if guard_flags:
+            update["schema_validation_failed"] = (
+                "schema_validation_failed" in guard_flags
+            )
+            update["guardrail_flags"] = [
+                *state.get("guardrail_flags", []),
+                *guard_flags,
+            ]
+        return update
+
     return {
-        "draft_response": response_templates[state["priority"]],
+        "draft_response": _draft_by_template(category, priority),
         "revision_count": 0,
     }
 
@@ -190,39 +275,93 @@ def evaluate_response(state: TicketState) -> dict:
     else:
         feedback = "Response meets all required quality checks."
 
-    return {
+    update = {
         "evaluation_score": score,
         "evaluation_feedback": feedback,
     }
 
+    # Written once, on the first pass only, so `evals.harness` can later
+    # compare it against the final score to measure revision improvement.
+    if state["revision_count"] == 0:
+        update["initial_evaluation_score"] = score
 
-def revise_response(state: TicketState) -> dict:
-    """Rewrite the draft to address `evaluate_response` feedback and bump the revision count."""
-    if state["llm_enabled"]:
-        service = get_llm_service()
+    return update
 
-        result = service.revise_response(
-            ticket_text=state["ticket_text"],
-            category=state["category"],
-            priority=state["priority"],
-            current_response=state["draft_response"],
-            feedback=state["evaluation_feedback"],
-        )
 
-        return {
-            "draft_response": result.response,
-            "revision_count": state["revision_count"] + 1,
-        }
-
-    revised_response = (
-        f"We received your {state['category']} support request and "
-        f"assigned it {state['priority']} priority. As a next step, "
+def _revise_by_template(category: str, priority: str) -> str:
+    """Deterministic fallback revision: guarantees the exact phrases
+    `evaluate_response` checks for, both when the LLM is disabled and when a
+    Gemini revision call fails its structured-output/safety guardrail."""
+    return (
+        f"We received your {category} support request and "
+        f"assigned it {priority} priority. As a next step, "
         "a support specialist will review the details and contact "
         "you. Please keep your reference number available for "
         "future communication."
     )
 
+
+def revise_response(state: TicketState) -> dict:
+    """Rewrite the draft to address `evaluate_response` feedback and bump the revision count."""
+    category = state["category"]
+    priority = state["priority"]
+
+    if state["llm_enabled"]:
+        service = get_llm_service()
+        ticket_text = state["ticket_text"]
+        current_response = state["draft_response"]
+        feedback = state["evaluation_feedback"]
+
+        response_text, guard_flags = output_guard.call_with_fallback(
+            lambda: (
+                service.revise_response(
+                    ticket_text=ticket_text,
+                    category=category,
+                    priority=priority,
+                    current_response=current_response,
+                    feedback=feedback,
+                ).response
+            ),
+            lambda: _revise_by_template(category, priority),
+        )
+
+        update = {
+            "draft_response": response_text,
+            "revision_count": state["revision_count"] + 1,
+        }
+        if guard_flags:
+            update["schema_validation_failed"] = (
+                "schema_validation_failed" in guard_flags
+            )
+            update["guardrail_flags"] = [
+                *state.get("guardrail_flags", []),
+                *guard_flags,
+            ]
+        return update
+
     return {
-        "draft_response": revised_response,
+        "draft_response": _revise_by_template(category, priority),
         "revision_count": state["revision_count"] + 1,
+    }
+
+
+def guard_output(state: TicketState) -> dict:
+    """Finalize the escalation decision and PII-detection flags once the
+    evaluate/revise loop has converged.
+
+    This is the only place that sets the real `requires_human_review` value
+    for a ticket that made it past `guard_input` — replacing the old
+    hardcoded assignment that used to live in `assign_priority`.
+    """
+    flags = list(state.get("guardrail_flags", []))
+
+    if pii.detect_pii(state["draft_response"]) or pii.detect_pii(state["summary"]):
+        flags.append("pii_detected")
+
+    decision = policy.evaluate_escalation(state, flags)
+
+    return {
+        "guardrail_flags": flags,
+        "requires_human_review": decision.requires_human_review,
+        "escalation_reason": decision.reason,
     }
